@@ -57,7 +57,8 @@ namespace BitmapGraphing
 
             public static explicit operator PointF(DataPoint data)
             {
-                return new PointF((float)data.X, (float)data.Y);
+                // negative because differing origins
+                return new PointF((float)data.X, (float)-data.Y);
             }
 
             public static bool operator ==(DataPoint left, DataPoint right) => left.Equals(right);
@@ -81,7 +82,7 @@ namespace BitmapGraphing
 
             var data = Data.Select(point => new
             {
-                PixelLocation = ((PointF)point) + context.GridRegion.Position() + context.Origin,
+                PixelLocation = context.ToPixels(((PointF)point)) + context.GridRegion.Position() + context.Origin,
                 Data = point
             }).Where(point => point.PixelLocation.X > leftBoundPixel && point.PixelLocation.X < rightBoundPixel && point.PixelLocation.Y > topBoundPixel && point.PixelLocation.Y < bottomBoundPixel)
             .OrderBy(point => point.Data.X)

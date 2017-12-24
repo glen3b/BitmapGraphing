@@ -31,9 +31,10 @@ namespace BitmapGraphing
         }
         // pixels
         public float ArrowWidth { get; set; } = 4;
-        public float ArrowHeight { get; set; } = 7;
+        public float ArrowLength { get; set; } = 7;
         public Rgba32 ArrowColor { get; set; } = Rgba32.Black;
 
+        // margins in pixels
         public bool EnablePositiveEndArrow { get; set; } = true;
         public float PositiveEndAxisMargin { get; set; } = 0;
         public bool EnableNegativeEndArrow { get; set; } = true;
@@ -49,7 +50,7 @@ namespace BitmapGraphing
 
         // displacement: from positive endpoint of axis
         public LabelInfo EndpointLabel { get; set; }
-        // displacement: from origin
+        // displacement: from center of positive end of axis, positioning works as if positioning the top center of the text
         public LabelInfo TitleLabel { get; set; }
 
         public void Render(GraphBuilder context, IImageProcessingContext<Rgba32> renderContext, GraphicsOptions options)
@@ -58,29 +59,29 @@ namespace BitmapGraphing
             PointF labelEndpoint;
             if (IsVertical)
             {
-                PointF endpoint1 = new PointF(context.Origin.X, context.GridRegion.Top + PositiveEndAxisMargin);
-                PointF endpoint2 = new PointF(context.Origin.X, context.GridRegion.Bottom - NegativeEndAxisMargin);
+                PointF endpoint1 = new PointF(context.GridRegion.Left + context.Origin.X, context.GridRegion.Top + PositiveEndAxisMargin + ArrowLength);
+                PointF endpoint2 = new PointF(context.GridRegion.Left + context.Origin.X, context.GridRegion.Bottom - NegativeEndAxisMargin - ArrowLength);
                 labelEndpoint = endpoint1;
 
                 renderContext.DrawLines(Brush, LineThickness, new PointF[] { endpoint1, endpoint2 });
-                if (ArrowWidth > 0 && ArrowHeight > 0)
+                if (ArrowWidth > 0 && ArrowLength > 0)
                 {
                     if (EnablePositiveEndArrow)
                     {
                         // top, add Y
                         renderContext.FillPolygon(ArrowColor, new PointF[] {
-                            endpoint1,
-                            endpoint1 + new PointF(-ArrowWidth / 2, ArrowHeight),
-                            endpoint1 + new PointF(ArrowWidth / 2, ArrowHeight)
+                            endpoint1 - new PointF(0, ArrowLength),
+                            endpoint1 + new PointF(-ArrowWidth / 2, 0),
+                            endpoint1 + new PointF(ArrowWidth / 2, 0)
                         }, options);
                     }
                     if (EnableNegativeEndArrow)
                     {
                         // bottom, subtract Y
                         renderContext.FillPolygon(ArrowColor, new PointF[] {
-                            endpoint2,
-                            endpoint2 - new PointF(-ArrowWidth / 2, ArrowHeight),
-                            endpoint2 - new PointF(ArrowWidth / 2, ArrowHeight)
+                            endpoint2 + new PointF(0, ArrowLength),
+                            endpoint2 - new PointF(-ArrowWidth / 2, 0),
+                            endpoint2 - new PointF(ArrowWidth / 2, 0)
                         }, options);
                     }
                 }
@@ -94,47 +95,49 @@ namespace BitmapGraphing
                         textRenderImage.Mutate(tempContext =>
                             tempContext
                                 .DrawText(TitleLabel.Text, TitleLabel.Font, TitleLabel.Color, PointF.Empty, options)
-                                .Rotate(90));
+                                .Rotate(-90));
                         // TODO can I do this in the same IImageProcessingContext or do I have to stop, let it write, then read, then write
                         textRenderImage.MutateCropToColored();
-                        PointF renderPosition = context.GridRegion.Position() + context.Origin + TitleLabel.Displacement - textRenderImage.Size();
+                        PointF renderPosition = context.GridRegion.Position() + context.Origin + TitleLabel.Displacement - textRenderImage.Size() + new PointF(0, (textRenderImage.Height / 2) - ((context.Origin.Y + context.GridRegion.Top - endpoint1.Y)/2));
                         renderContext.DrawImage(textRenderImage, textRenderImage.Size(), (Point)renderPosition, options);
                     }
                 }
             }
             else
             {
-                PointF endpoint1 = new PointF(context.GridRegion.Left + NegativeEndAxisMargin, context.Origin.Y);
-                PointF endpoint2 = new PointF(context.GridRegion.Right - PositiveEndAxisMargin, context.Origin.Y);
+                PointF endpoint1 = new PointF(context.GridRegion.Left + NegativeEndAxisMargin + ArrowLength, context.GridRegion.Top + context.Origin.Y);
+                PointF endpoint2 = new PointF(context.GridRegion.Right - PositiveEndAxisMargin - ArrowLength, context.GridRegion.Top + context.Origin.Y);
                 labelEndpoint = endpoint2;
 
                 renderContext.DrawLines(Brush, LineThickness, new PointF[] { endpoint1, endpoint2 });
-                if (ArrowWidth > 0 && ArrowHeight > 0)
+                if (ArrowWidth > 0 && ArrowLength > 0)
                 {
                     if (EnableNegativeEndArrow)
                     {
                         // left, add X
                         renderContext.FillPolygon(ArrowColor, new PointF[] {
-                            endpoint1,
-                            endpoint1 + new PointF(ArrowHeight, -ArrowWidth / 2),
-                            endpoint1 + new PointF(ArrowHeight, ArrowWidth / 2)
+                            endpoint1 - new PointF(ArrowLength, 0),
+                            endpoint1 + new PointF(0, -ArrowWidth / 2),
+                            endpoint1 + new PointF(0, ArrowWidth / 2)
                         }, options);
                     }
                     if (EnablePositiveEndArrow)
                     {
                         // right, subtract X
                         renderContext.FillPolygon(ArrowColor, new PointF[] {
-                            endpoint2,
-                            endpoint2 - new PointF(ArrowHeight, -ArrowWidth / 2),
-                            endpoint2 - new PointF(ArrowHeight, ArrowWidth / 2)
+                            endpoint2 + new PointF(ArrowLength, 0),
+                            endpoint2 - new PointF(0, -ArrowWidth / 2),
+                            endpoint2 - new PointF(0, ArrowWidth / 2)
                         }, options);
                     }
                 }
 
                 if (TitleLabel != null)
                 {
-                    // horizontal case is easy
-                    renderContext.DrawText(TitleLabel.Text, TitleLabel.Font, TitleLabel.Color, context.GridRegion.Position() + context.Origin + TitleLabel.Displacement, options);
+                    //var textBounds = TextMeasurer.Measure(TitleLabel.Text, new RendererOptions(TitleLabel.Font));
+                    // TODO: why does this work without a textBounds displacement for re-origining?
+                    var pos = context.GridRegion.Position() + context.Origin + TitleLabel.Displacement + new PointF(((endpoint2.X - (context.GridRegion.Left + context.Origin.X)) / 2), 0);
+                    renderContext.DrawText(TitleLabel.Text, TitleLabel.Font, TitleLabel.Color, pos, options);
                 }
             }
 

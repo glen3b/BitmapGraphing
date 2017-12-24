@@ -15,6 +15,22 @@ namespace BitmapGraphing
 
         public static Size Size<TPixel>(this Image<TPixel> img) where TPixel : struct, SixLabors.ImageSharp.PixelFormats.IPixel<TPixel> => new Size(img.Width, img.Height);
 
+        /// <summary>
+        /// Computes the center of the given "rectangle," assuming a top left corner of 0,0.
+        /// </summary>
+        public static Point Center(this Size sizeObj)
+        {
+            return new Point(sizeObj.Width / 2, sizeObj.Height / 2);
+        }
+
+        /// <summary>
+        /// Computes the center of the given "rectangle," assuming a top left corner of 0,0.
+        /// </summary>
+        public static PointF Center(this SizeF sizeObj)
+        {
+            return new PointF(sizeObj.Width / 2, sizeObj.Height / 2);
+        }
+
         // TODO this feels like it could be supported for arbitrary TPixel, since many have alpha
         public static void MutateCropToColored(this Image<Rgba32> img)
         {
